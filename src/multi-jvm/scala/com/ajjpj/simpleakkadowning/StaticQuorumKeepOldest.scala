@@ -15,47 +15,83 @@ object StaticQuorumKeepOldest {
   abstract class Spec extends MultiNodeClusterSpec(Config) {
     import Config._
 
+    val side1 = Vector (node1, node2)
+    val side2 = Vector (node3)
+
     "An cluster of three nodes" should {
       "reach initial convergence" in {
+        muteLog()
+        muteMarkingAsUnreachable()
+        muteMarkingAsReachable()
+
         awaitClusterUp(node1, node2, node3)
         enterBarrier("after-1")
-
-        muteMarkingAsUnreachable(system)
-        muteDeadLetters(classOf[AnyRef])(system)
       }
 
       "mark nodes as unreachable between partitions, and heal the partition" in {
-        enterBarrier("before-split")
+        enterBarrier ("before-split")
 
-        val side1 = Vector(node1, node2)
-        val side2 = Vector(node3)
-
-        runOn(conductor) {
-          // split the cluster in two parts (first, second) / (third, fourth, fifth)
-          for (role1 ← side1; role2 ← side2) {
+        runOn (conductor) {
+          for (role1 <- side1; role2 <- side2) {
             testConductor.blackhole (role1, role2, Direction.Both).await
           }
         }
-        enterBarrier("after-split")
+        enterBarrier ("after-split")
 
-        println("after-split")
+        Thread.sleep (5000)
 
-        runOn(conductor) {
-          for (i <- 1 to 20) {
-            for (r <- side1 ++ side2) {
-              println (s"${r.name}: up-nodes = ${upNodesFor(r).map(_.name).mkString(" ")}")
-            }
-            Thread.sleep(1000)
+        runOn (conductor) {
+          for (r <- side1) {
+            upNodesFor (r) shouldBe (side1 ++ side2).toSet
+            unreachableNodesFor (r) shouldBe side2.toSet
+          }
+          for (r <- side2) {
+            upNodesFor (r) shouldBe (side1 ++ side2).toSet
+            unreachableNodesFor (r) shouldBe side1.toSet
+          }
+
+          for (role1 <- side1; role2 <- side2) {
+            testConductor.passThrough (role1, role2, Direction.Both).await
+          }
+        }
+        enterBarrier ("after-network-heal")
+
+        Thread.sleep (5000)
+
+        runOn (conductor) {
+          for (r <- side1 ++ side2) {
+            upNodesFor (r) shouldBe (side1 ++ side2).toSet
+            unreachableNodesFor (r) shouldBe empty
           }
         }
 
-        runOn(side1 ++ side2 :_*) {
-          Thread.sleep(20000)
+        enterBarrier ("after-cluster-heal")
+      }
+
+      "detect a network partition and shut down one partition after a timeout" in {
+        enterBarrier("before-durable-partition")
+
+        runOn (conductor) {
+          for (role1 <- side1; role2 <- side2) {
+            testConductor.blackhole (role1, role2, Direction.Both).await
+          }
+          side2.foreach (testConductor.removeNode)
+
+          Thread.sleep(10000)
         }
 
-        println ("yo")
+        runOn (side1 :_*) {
+          enterBarrier("after-durable-partition")
+        }
 
-        enterBarrier("after-2")
+        runOn (conductor) {
+          for (r <- side1) upNodesFor(r) shouldBe side1.toSet
+          for (r <- side2) upNodesFor(r) shouldBe empty
+        }
+
+        runOn (side1 :_*) {
+          enterBarrier("finished")
+        }
       }
     }
   }

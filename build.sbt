@@ -27,5 +27,4 @@ lazy val `simple-akka-downing` = (project in file("."))
     libraryDependencies += scalaTest % Test,
     libraryDependencies += testKit % Test,
     libraryDependencies += multiNodeTestKit % Test,
-    libraryDependencies ++= akkaLogging.map(_ % Test)
   )

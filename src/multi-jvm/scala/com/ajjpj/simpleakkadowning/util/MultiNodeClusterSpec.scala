@@ -3,7 +3,7 @@ package com.ajjpj.simpleakkadowning.util
 import java.util.concurrent.ConcurrentHashMap
 
 import akka.actor.{ActorSystem, Address, Props}
-import akka.cluster.{Cluster, Member, MemberStatus}
+import akka.cluster._
 import akka.cluster.Member.addressOrdering
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, Uri}
@@ -107,9 +107,34 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
   }
 
 
+  def muteLog(sys: ActorSystem = system): Unit = {
+    if (!sys.log.isDebugEnabled) {
+      Seq(
+        ".*Cluster Node.* - registered cluster JMX MBean.*",
+        ".*Cluster Node.* Welcome.*",
+        ".*Cluster Node.* is JOINING.*",
+        ".*Cluster Node.* Leader can .*",
+        ".*Cluster Node.* Leader is moving node.*",
+        ".*Cluster Node.* - is starting up.*",
+        ".*Shutting down cluster Node.*",
+        ".*Cluster node successfully shut down.*",
+        ".*Ignoring received gossip .*",
+        ".*Using a dedicated scheduler for cluster.*") foreach { s ⇒
+        sys.eventStream.publish(Mute(EventFilter.info(pattern = s)))
+      }
+
+      muteDeadLetters(classOf[AnyRef])(sys)
+    }
+  }
+
   def muteMarkingAsUnreachable(sys: ActorSystem = system): Unit =
     if (!sys.log.isDebugEnabled)
       sys.eventStream.publish(Mute(EventFilter.error(pattern = ".*Marking.* as UNREACHABLE.*")))
+
+  def muteMarkingAsReachable(sys: ActorSystem = system): Unit =
+    if (!sys.log.isDebugEnabled)
+      sys.eventStream.publish(Mute(EventFilter.info(pattern = ".*Marking.* as REACHABLE.*")))
+
 
   private def portToNode(port: Int) = roles.filter(address(_).port contains port).head
 
@@ -127,8 +152,7 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
       }
     }
     catch {
-      case NonFatal(th) =>
-        th.printStackTrace()
+      case th: akka.stream.StreamTcpException =>
         Set.empty
     }
   }
