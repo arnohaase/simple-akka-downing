@@ -1,4 +1,4 @@
-package com.ajjpj.simpleakkadowning.akka
+package com.ajjpj.simpleakkadowning._akka
 
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -10,14 +10,15 @@ import akka.remote.testkit.MultiNodeSpec
 import akka.testkit._
 
 import scala.concurrent.duration._
-import akka.actor.Address
+import akka.actor.{ActorSystem, Address}
 import akka.cluster.Member.addressOrdering
-import akka.cluster.{Cluster, ClusterReadView, Member, MemberStatus}
+import akka.cluster.{Cluster, Member, MemberStatus}
 import akka.remote.testconductor.RoleName
 
 import scala.concurrent.duration._
 import scala.collection.immutable
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
+import akka.testkit.TestEvent.Mute
 import com.ajjpj.simpleakkadowning.util.STMultiNodeSpec
 
 final case class SplitBrainMultiNodeConfig(failureDetectorPuppet: Boolean) extends MultiNodeConfig {
@@ -77,11 +78,11 @@ final case class SplitBrainMultiNodeConfig(failureDetectorPuppet: Boolean) exten
 //class SplitBrainWithFailureDetectorPuppetMultiJvmNode4 extends SplitBrainSpec(failureDetectorPuppet = true)
 //class SplitBrainWithFailureDetectorPuppetMultiJvmNode5 extends SplitBrainSpec(failureDetectorPuppet = true)
 
-class SplitBrainWithAccrualFailureDetectorMultiJvmNode1 extends SplitBrainSpec(failureDetectorPuppet = false)
-class SplitBrainWithAccrualFailureDetectorMultiJvmNode2 extends SplitBrainSpec(failureDetectorPuppet = false)
-class SplitBrainWithAccrualFailureDetectorMultiJvmNode3 extends SplitBrainSpec(failureDetectorPuppet = false)
-class SplitBrainWithAccrualFailureDetectorMultiJvmNode4 extends SplitBrainSpec(failureDetectorPuppet = false)
-class SplitBrainWithAccrualFailureDetectorMultiJvmNode5 extends SplitBrainSpec(failureDetectorPuppet = false)
+//class SplitBrainWithAccrualFailureDetectorMultiJvmNode1 extends SplitBrainSpec(failureDetectorPuppet = false)
+//class SplitBrainWithAccrualFailureDetectorMultiJvmNode2 extends SplitBrainSpec(failureDetectorPuppet = false)
+//class SplitBrainWithAccrualFailureDetectorMultiJvmNode3 extends SplitBrainSpec(failureDetectorPuppet = false)
+//class SplitBrainWithAccrualFailureDetectorMultiJvmNode4 extends SplitBrainSpec(failureDetectorPuppet = false)
+//class SplitBrainWithAccrualFailureDetectorMultiJvmNode5 extends SplitBrainSpec(failureDetectorPuppet = false)
 
 abstract class SplitBrainSpec(multiNodeConfig: SplitBrainMultiNodeConfig)
   extends MultiNodeSpec(multiNodeConfig)
@@ -93,7 +94,7 @@ abstract class SplitBrainSpec(multiNodeConfig: SplitBrainMultiNodeConfig)
 
   import multiNodeConfig._
 
-//  muteMarkingAsUnreachable()
+  muteMarkingAsUnreachable()
 
   val side1 = Vector(first, second)
   val side2 = Vector(third, fourth, fifth)
@@ -150,6 +151,11 @@ abstract class SplitBrainSpec(multiNodeConfig: SplitBrainMultiNodeConfig)
       case address ⇒ address
     }
   }
+
+  def muteMarkingAsUnreachable(sys: ActorSystem = system): Unit =
+    if (!sys.log.isDebugEnabled)
+      sys.eventStream.publish(Mute(EventFilter.error(pattern = ".*Marking.* as UNREACHABLE.*")))
+
 
   implicit val clusterOrdering: Ordering[RoleName] = new Ordering[RoleName] {
     import Member.addressOrdering

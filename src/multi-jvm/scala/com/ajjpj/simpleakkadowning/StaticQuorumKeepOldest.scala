@@ -1,7 +1,7 @@
 package com.ajjpj.simpleakkadowning
 
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
-import com.ajjpj.simpleakkadowning.util.{SimpleDowningConfig, SimpleDowningSpec}
+import com.ajjpj.simpleakkadowning.util.{MultiNodeClusterSpec, SimpleDowningConfig}
 
 
 object StaticQuorumKeepOldest {
@@ -12,60 +12,56 @@ object StaticQuorumKeepOldest {
     val node3 = role("node3")
   }
 
-  abstract class Spec extends SimpleDowningSpec(Config) {
+  abstract class Spec extends MultiNodeClusterSpec(Config) {
     import Config._
 
-    "An Akka Cluster" should {
+    "An cluster of three nodes" should {
+      "reach initial convergence" in {
+        awaitClusterUp(node1, node2, node3)
+        enterBarrier("after-1")
+
+        muteMarkingAsUnreachable(system)
+        muteDeadLetters(classOf[AnyRef])(system)
+      }
+
       "mark nodes as unreachable between partitions, and heal the partition" in {
-        runOn(conductor) {
-          testConductor.abort(node1, node2)
-          testConductor.abort(node1, node3)
-          testConductor.abort(node1, conductor)
-        }
+        enterBarrier("before-split")
 
-        enterBarrier("+++")
-
-        init()
+        val side1 = Vector(node1, node2)
+        val side2 = Vector(node3)
 
         runOn(conductor) {
-          println ("+++ " + unreachableNodesFor(node1))
+          // split the cluster in two parts (first, second) / (third, fourth, fifth)
+          for (role1 ← side1; role2 ← side2) {
+            testConductor.blackhole (role1, role2, Direction.Both).await
+          }
+        }
+        enterBarrier("after-split")
 
-          testConductor.blackhole(node1, node2, Direction.Both)
-          testConductor.blackhole(node1, node3, Direction.Both)
-          testConductor.blackhole(node1, conductor, Direction.Both)
+        println("after-split")
 
-//          createPartition(node1, node2)
-          Thread.sleep(3000)
-
-          println ("*** " + unreachableNodesFor(node1))
-
-          upNodesFor(node1) shouldBe Set(node1, node2, node3)
-          upNodesFor(node2) shouldBe Set(node1, node2, node3)
-          upNodesFor(node3) shouldBe Set(node1, node2, node3)
-
-          unreachableNodesFor(node1) shouldBe Set(node3)
-          unreachableNodesFor(node2) shouldBe Set(node3)
-          unreachableNodesFor(node3) shouldBe Set(node1, node2)
-
-          healPartition()
-          Thread.sleep(3000)
-
-          unreachableNodesFor(node1) shouldBe Set(node1, node2, node3)
-          unreachableNodesFor(node2) shouldBe Set(node1, node2, node3)
-          unreachableNodesFor(node3) shouldBe Set(node1, node2, node3)
+        runOn(conductor) {
+          for (i <- 1 to 20) {
+            for (r <- side1 ++ side2) {
+              println (s"${r.name}: up-nodes = ${upNodesFor(r).map(_.name).mkString(" ")}")
+            }
+            Thread.sleep(1000)
+          }
         }
 
-//        println ("yo: " + upNodesFor(node1))
-        enterBarrier("---")
+        runOn(side1 ++ side2 :_*) {
+          Thread.sleep(20000)
+        }
+
+        println ("yo")
+
+        enterBarrier("after-2")
       }
     }
   }
 }
 
-//class StaticQuorumKeepOldestMultiJvmConductor extends StaticQuorumKeepOldest.Spec
-//class StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
-//class StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
-//class StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
-
-
-
+class StaticQuorumKeepOldestMultiJvmConductor extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec

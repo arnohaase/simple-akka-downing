@@ -54,9 +54,12 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
       context.system.terminate()
       context.become(Actor.emptyBehavior)
     case SplitBrainDetected(clusterState) if iAmOldest(clusterState) =>
-      log.warning("Network partition detected. I am the oldest node in the surviving partition --> terminating unreachable nodes {}", cluster.state.unreachable)
+      println("****************************************** oldest !!!")
+      log.error("Network partition detected. I am the oldest node in the surviving partition --> terminating unreachable nodes {}", cluster.state.unreachable)
       cluster.state.unreachable.foreach(m => cluster.down(m.address))
     case SplitBrainDetected(clusterState) =>
+      println("****************************************** not oldest")
+
       log.info("Network partition detected. I am in the surviving partition, but I am not the leader, so nothing needs to be done")
   }
 
@@ -68,10 +71,14 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
   private def iAmOldest(clusterState: CurrentClusterState) = oldestReachable(clusterState).address == cluster.selfAddress
 
   private def onClusterChanged(): Unit = {
+    println("#############################################  onClusterchanged: " + cluster.state.unreachable.size)
+
     unreachableTimer.foreach(_.cancel())
     unreachableTimer = None
 
     if (cluster.state.unreachable.nonEmpty) {
+      println("******************************************                   starting timer")
+
       import context.dispatcher
       // Store the cluster's state in the message to ensure split brain detection is done based on the state that was stable.
       //  If the handler reads the then-current cluster state, that may have changed between the scheduler firing and the event

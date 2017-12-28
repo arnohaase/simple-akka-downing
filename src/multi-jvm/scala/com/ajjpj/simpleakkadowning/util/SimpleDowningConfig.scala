@@ -1,5 +1,7 @@
 package com.ajjpj.simpleakkadowning.util
 
+import java.util.UUID
+
 import akka.remote.testkit.MultiNodeConfig
 import com.typesafe.config.ConfigFactory
 
@@ -16,6 +18,40 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
     else {
       val configString =
         s"""akka.actor.provider=cluster
+           |akka.actor.warn-about-java-serializer-usage = off
+           |akka.cluster {
+           |  jmx.enabled                         = off
+           |  gossip-interval                     = 100 ms
+           |  leader-actions-interval             = 100 ms
+           |  unreachable-nodes-reaper-interval   = 100 ms
+           |  periodic-tasks-initial-delay        = 100 ms
+           |  publish-stats-interval              = 0 s # always, when it happens
+           |  failure-detector.heartbeat-interval = 100 ms
+           |
+           |  run-coordinated-shutdown-when-down = off
+           |}
+           |akka.loglevel = INFO
+           |akka.log-dead-letters = off
+           |akka.log-dead-letters-during-shutdown = off
+           |akka.remote {
+           |  log-remote-lifecycle-events = off
+           |  artery.advanced.flight-recorder {
+           |    enabled=on
+           |     destination=target/flight-recorder-${UUID.randomUUID ().toString}.afr
+           |  }
+           |}
+           |akka.loggers = ["akka.testkit.TestEventListener"]
+           |akka.test {
+           |  single-expect-default = 5 s
+           |}
+           |
+           |akka.remote.retry-gate-closed-for = 3 s
+           |akka.cluster {
+           |  failure-detector.threshold = 3
+           |}
+           |
+           |
+           |akka.cluster.downing-provider-class = com.ajjpj.simpleakkadowning.SimpleAkkaDowningProvider
            |
            |simple-akka-downing.stable-after=5s
            |simple-akka-downing.active-strategy=$strategy

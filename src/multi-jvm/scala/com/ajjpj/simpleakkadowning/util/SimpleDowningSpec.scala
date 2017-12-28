@@ -13,7 +13,7 @@ import akka.testkit.ImplicitSender
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
-abstract class SimpleDowningSpec(config: SimpleDowningConfig) extends MultiNodeSpec(config) with STMultiNodeSpec with ImplicitSender{
+abstract class SimpleDowningSpec(config: SimpleDowningConfig) extends MultiNodeSpec(config) with STMultiNodeSpec with ImplicitSender {
 
   def initialParticipants = roles.size
 

@@ -21,8 +21,8 @@ class ClusterHttpInspector(httpPort: Int) extends Actor {
         cluster.state.members.filter(_.status == MemberStatus.Up).map(_.address.port.get).mkString(" ")
       }} ~
       path("unreachable") { complete {
-        println ("members: " + cluster.state.members)
-        println ("unreachable: " + cluster.state.unreachable)
+//        println ("members: " + cluster.state.members)
+//        println ("unreachable: " + cluster.state.unreachable)
         cluster.state.unreachable.map(_.address.port.get).mkString(" ")
       }}
     }
