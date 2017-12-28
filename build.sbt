@@ -15,7 +15,7 @@ lazy val `simple-akka-downing` = (project in file("."))
   .configs(MultiJvm)
   .settings(
     inThisBuild(List(
-      organization := "com.example",
+      organization := "com.ajjpj.simple-akka-downing",
       scalaVersion := "2.12.4",
       version      := "0.1.0-SNAPSHOT"
     )),

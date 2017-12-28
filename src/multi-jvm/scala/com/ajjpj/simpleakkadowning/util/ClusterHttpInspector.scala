@@ -1,7 +1,7 @@
 package com.ajjpj.simpleakkadowning.util
 
 import akka.actor.Actor
-import akka.cluster.Cluster
+import akka.cluster.{Cluster, MemberStatus}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
@@ -16,9 +16,16 @@ class ClusterHttpInspector(httpPort: Int) extends Actor {
   val routes = {
     import Directives._
 
-    path("cluster-members") { complete {
-      cluster.state.members.map(_.address.port.get).mkString(" ")
-    }}
+    pathPrefix("cluster-members") {
+      path("up") { complete {
+        cluster.state.members.filter(_.status == MemberStatus.Up).map(_.address.port.get).mkString(" ")
+      }} ~
+      path("unreachable") { complete {
+        println ("members: " + cluster.state.members)
+        println ("unreachable: " + cluster.state.unreachable)
+        cluster.state.unreachable.map(_.address.port.get).mkString(" ")
+      }}
+    }
   }
 
   import context.dispatcher
@@ -26,7 +33,7 @@ class ClusterHttpInspector(httpPort: Int) extends Actor {
 
   val fServerBinding =
     Http(context.system)
-      .bindAndHandle(routes, "0.0.0.0", httpPort)
+      .bindAndHandle(routes, "localhost", httpPort)
 
 
   override def postStop () = {
