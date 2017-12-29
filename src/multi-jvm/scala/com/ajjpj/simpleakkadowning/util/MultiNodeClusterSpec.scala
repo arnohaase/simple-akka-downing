@@ -7,6 +7,7 @@ import akka.cluster.Member.addressOrdering
 import akka.cluster._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, Uri}
+import akka.remote.DefaultFailureDetectorRegistry
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeSpec
 import akka.stream.ActorMaterializer
@@ -103,6 +104,51 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
       awaitAssert(cluster.state.members.map(_.address) should contain(address(myself)))
     } else
       cluster.selfMember
+  }
+
+  def createNetworkPartition(side1: Seq[RoleName], side2: Seq[RoleName]): Unit = {
+    runOn(side1 :_*) {
+      for (r <- side2) markNodeAsUnavailable(r)
+    }
+    runOn(side2 :_*) {
+      for (r <- side1) markNodeAsUnavailable(r)
+    }
+  }
+
+  def healNetworkPartition(): Unit = {
+    runOn(roles.tail :_*) {
+      for (r <- roles.tail) markNodeAsAvailable(r)
+    }
+  }
+
+  /**
+    * Marks a node as available in the failure detector
+    */
+  def markNodeAsAvailable(address: Address): Unit =
+    failureDetectorPuppet(address) foreach (_.markNodeAsAvailable())
+
+  /**
+    * Marks a node as unavailable in the failure detector
+    */
+  def markNodeAsUnavailable(address: Address): Unit = {
+    // before marking it as unavailable there should be at least one heartbeat
+    // to create the FailureDetectorPuppet in the FailureDetectorRegistry
+    cluster.failureDetector.heartbeat(address)
+    failureDetectorPuppet(address) foreach (_.markNodeAsUnavailable())
+  }
+
+  private def failureDetectorPuppet(address: Address): Option[FailureDetectorPuppet] = {
+    cluster.failureDetector match {
+      case reg: DefaultFailureDetectorRegistry[Address] =>
+        // do reflection magic because 'failureDetector' is only visible from within "akka" and sub packages
+        val failureDetectorMethod = reg.getClass.getMethods.find(_.getName == "failureDetector").get
+        failureDetectorMethod.invoke(reg, address) match {
+          case Some(p: FailureDetectorPuppet) => Some(p)
+          case _ => None
+        }
+//          reg.failureDetector(address) collect { case p: FailureDetectorPuppet ⇒ p }
+      case _ => None
+    }
   }
 
 

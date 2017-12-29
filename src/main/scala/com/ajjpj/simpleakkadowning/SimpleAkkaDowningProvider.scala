@@ -68,15 +68,20 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
   private def iAmOldest(clusterState: CurrentClusterState) = oldestReachable(clusterState).address == cluster.selfAddress
 
   private def onClusterChanged(): Unit = {
+    // read cluster.state initially to keep it stable and avoid data race
+    val clusterState = cluster.state
+
+    println ("onClusterChanged: " + unreachableTimer.nonEmpty + " -> " + clusterState.unreachable.size)
+
     unreachableTimer.foreach(_.cancel())
     unreachableTimer = None
 
-    if (cluster.state.unreachable.nonEmpty) {
+    if (clusterState.unreachable.nonEmpty) {
       import context.dispatcher
       // Store the cluster's state in the message to ensure split brain detection is done based on the state that was stable.
       //  If the handler reads the then-current cluster state, that may have changed between the scheduler firing and the event
       //  being handled
-      unreachableTimer = Some(context.system.scheduler.scheduleOnce(stableInterval, self, SplitBrainDetected(cluster.state)))
+      unreachableTimer = Some(context.system.scheduler.scheduleOnce(stableInterval, self, SplitBrainDetected(clusterState)))
     }
   }
 

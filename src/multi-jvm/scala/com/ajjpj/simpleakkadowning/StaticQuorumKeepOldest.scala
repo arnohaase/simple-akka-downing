@@ -35,12 +35,13 @@ object StaticQuorumKeepOldest {
       "mark nodes as unreachable between partitions, and heal the partition" in {
         enterBarrier ("before-split")
 
-        runOn (conductor) {
-          for (role1 <- side1; role2 <- side2) {
-            testConductor.blackhole (role1, role2, Direction.Both).await
-          }
-        }
+        createNetworkPartition(side1, side2)
         enterBarrier ("after-split")
+//        runOn (conductor) {
+//          for (role1 <- side1; role2 <- side2) {
+//            testConductor.blackhole (role1, role2, Direction.Both).await
+//          }
+//        }
 
         Thread.sleep (5000)
 
@@ -53,11 +54,11 @@ object StaticQuorumKeepOldest {
             upNodesFor (r) shouldBe (side1 ++ side2).toSet
             unreachableNodesFor (r) shouldBe side1.toSet
           }
-
-          for (role1 <- side1; role2 <- side2) {
-            testConductor.passThrough (role1, role2, Direction.Both).await
-          }
         }
+
+        enterBarrier("after-split-check")
+
+        healNetworkPartition()
         enterBarrier ("after-network-heal")
 
         Thread.sleep (5000)
@@ -75,31 +76,45 @@ object StaticQuorumKeepOldest {
       "detect a network partition and shut down one partition after a timeout" in {
         enterBarrier("before-durable-partition")
 
+        createNetworkPartition (side1, side2)
+
+
+//        runOn (conductor) {
+//          for (r <- side1 ++ side2) {
+//            println (r.name + ": " + address(r).port.get)
+//          }
+//
+//          side2.foreach (testConductor.removeNode(_))
+//          for (role1 <- side1; role2 <- side2) {
+//            println("blackholing " + role1.name + " <-> " + role2.name)
+//            testConductor.blackhole (role1, role2, Direction.Both)
+//          }
+
+//          Thread.sleep(10000)
+//          enterBarrier("after-durable-partition")
+//        }
+
+//        runOn (side1 :_*) {
+//          enterBarrier("after-durable-partition")
+//        }
+
+        Thread.sleep(15000)
+
         runOn (conductor) {
-          side2.foreach (testConductor.removeNode(_))
-          for (role1 <- side1; role2 <- side2) {
-            testConductor.blackhole (role1, role2, Direction.Both)
-          }
+          println ("--8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<--")
 
-          Thread.sleep(10000)
-          enterBarrier("after-durable-partition")
-        }
-
-        runOn (side1 :_*) {
-          enterBarrier("after-durable-partition")
-        }
-
-        runOn (conductor) {
           for (r <- side1) upNodesFor(r) shouldBe side1.toSet
           for (r <- side2) upNodesFor(r) shouldBe empty
         }
 
-        runOn(conductor) {
-          enterBarrier("finished")
-        }
-        runOn (side1 :_*) {
-          enterBarrier("finished")
-        }
+        Thread.sleep(5000)
+
+//        runOn(conductor) {
+//          enterBarrier("finished")
+//        }
+//        runOn (side1 :_*) {
+//          enterBarrier("finished")
+//        }
       }
     }
   }
@@ -112,9 +127,9 @@ class StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
 
-class _StaticQuorumKeepOldestMultiJvmCondu extends StaticQuorumKeepOldest.Spec
-class _StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
-class _StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
-class _StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
-class _StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
-class _StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
+//class _StaticQuorumKeepOldestMultiJvmCondu extends StaticQuorumKeepOldest.Spec
+//class _StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
+//class _StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
+//class _StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
+//class _StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
+//class _StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
