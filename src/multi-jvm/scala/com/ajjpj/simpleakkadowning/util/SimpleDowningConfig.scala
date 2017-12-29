@@ -3,19 +3,27 @@ package com.ajjpj.simpleakkadowning.util
 import java.util.UUID
 
 import akka.remote.testkit.MultiNodeConfig
+import com.ajjpj.simpleakkadowning.StaticQuorumKeepOldest.Config.role
 import com.typesafe.config.ConfigFactory
 
 
 abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,String)*) extends MultiNodeConfig {
   commonConfig(ConfigFactory.parseResources("application.conf"))
 
-  private var isFirstNode = true
+  final val CLUSTER_SIZE = 5
+  final val ROLE_SIZE = 3
+
+  private var numRoles = 0
   override def role (name: String) = {
     val roleName = super.role (name)
+    numRoles += 1
 
-    if (isFirstNode)
-      isFirstNode = false
-    else {
+    if (numRoles > 1) {
+      var clusterRoles = Vector.empty[String]
+
+      if (numRoles <= ROLE_SIZE) clusterRoles :+= "with-oldest"
+      if (numRoles > CLUSTER_SIZE - ROLE_SIZE) clusterRoles :+= "without-oldest"
+
       val configString =
         s"""akka.actor.provider=cluster
            |akka.actor.warn-about-java-serializer-usage = off
@@ -27,6 +35,8 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
            |  periodic-tasks-initial-delay        = 100 ms
            |  publish-stats-interval              = 0 s # always, when it happens
            |  failure-detector.heartbeat-interval = 100 ms
+           |
+           |  roles = ${clusterRoles.mkString("[", ",", "]")}
            |
            |  run-coordinated-shutdown-when-down = off
            |}

@@ -5,26 +5,30 @@ import com.ajjpj.simpleakkadowning.util.{MultiNodeClusterSpec, SimpleDowningConf
 
 
 object StaticQuorumKeepOldest {
-  object Config extends SimpleDowningConfig("static-quorum", "quorum-size" -> "2") {
+  object Config extends SimpleDowningConfig("static-quorum", "quorum-size" -> "3") {
+
     val conductor = role("conductor")
     val node1 = role("node1")
     val node2 = role("node2")
     val node3 = role("node3")
+    val node4 = role("node4")
+    val node5 = role("node5")
+
   }
 
   abstract class Spec extends MultiNodeClusterSpec(Config) {
     import Config._
 
-    val side1 = Vector (node1, node2)
-    val side2 = Vector (node3)
+    val side1 = Vector (node1, node2, node3)
+    val side2 = Vector (node4, node5)
 
-    "An cluster of three nodes" should {
+    "A cluster of five nodes" should {
       "reach initial convergence" in {
         muteLog()
         muteMarkingAsUnreachable()
         muteMarkingAsReachable()
 
-        awaitClusterUp(node1, node2, node3)
+        awaitClusterUp(side1 ++ side2 :_*)
         enterBarrier("after-1")
       }
 
@@ -72,12 +76,13 @@ object StaticQuorumKeepOldest {
         enterBarrier("before-durable-partition")
 
         runOn (conductor) {
+          side2.foreach (testConductor.removeNode(_))
           for (role1 <- side1; role2 <- side2) {
-            testConductor.blackhole (role1, role2, Direction.Both).await
+            testConductor.blackhole (role1, role2, Direction.Both)
           }
-          side2.foreach (testConductor.removeNode)
 
           Thread.sleep(10000)
+          enterBarrier("after-durable-partition")
         }
 
         runOn (side1 :_*) {
@@ -89,6 +94,9 @@ object StaticQuorumKeepOldest {
           for (r <- side2) upNodesFor(r) shouldBe empty
         }
 
+        runOn(conductor) {
+          enterBarrier("finished")
+        }
         runOn (side1 :_*) {
           enterBarrier("finished")
         }
@@ -97,7 +105,16 @@ object StaticQuorumKeepOldest {
   }
 }
 
-class StaticQuorumKeepOldestMultiJvmConductor extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvmCondu extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
+
+class _StaticQuorumKeepOldestMultiJvmCondu extends StaticQuorumKeepOldest.Spec
+class _StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
+class _StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
+class _StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
+class _StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
+class _StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec

@@ -3,8 +3,8 @@ package com.ajjpj.simpleakkadowning.util
 import java.util.concurrent.ConcurrentHashMap
 
 import akka.actor.{ActorSystem, Address, Props}
-import akka.cluster._
 import akka.cluster.Member.addressOrdering
+import akka.cluster._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, Uri}
 import akka.remote.testconductor.RoleName
@@ -15,7 +15,6 @@ import akka.testkit.{EventFilter, ImplicitSender}
 
 import scala.collection.immutable
 import scala.concurrent.duration._
-import scala.util.control.NonFatal
 
 
 abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNodeSpec(config) with STMultiNodeSpec with ImplicitSender {
@@ -140,7 +139,7 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
 
   private def httpGetNodes(node: RoleName, path: String): Set[RoleName] = {
     try {
-      import system.dispatcher
+
       implicit val mat = ActorMaterializer()
 
       val uri = Uri (s"http://localhost:${httpPort (node)}$path")
