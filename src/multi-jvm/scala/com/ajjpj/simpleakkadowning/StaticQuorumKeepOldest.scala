@@ -1,6 +1,5 @@
 package com.ajjpj.simpleakkadowning
 
-import akka.remote.transport.ThrottlerTransportAdapter.Direction
 import com.ajjpj.simpleakkadowning.util.{MultiNodeClusterSpec, SimpleDowningConfig}
 
 
@@ -37,13 +36,8 @@ object StaticQuorumKeepOldest {
 
         createNetworkPartition(side1, side2)
         enterBarrier ("after-split")
-//        runOn (conductor) {
-//          for (role1 <- side1; role2 <- side2) {
-//            testConductor.blackhole (role1, role2, Direction.Both).await
-//          }
-//        }
 
-        Thread.sleep (5000)
+        Thread.sleep (6000)
 
         runOn (conductor) {
           for (r <- side1) {
@@ -61,7 +55,7 @@ object StaticQuorumKeepOldest {
         healNetworkPartition()
         enterBarrier ("after-network-heal")
 
-        Thread.sleep (5000)
+        Thread.sleep (10000)
 
         runOn (conductor) {
           for (r <- side1 ++ side2) {
@@ -77,44 +71,15 @@ object StaticQuorumKeepOldest {
         enterBarrier("before-durable-partition")
 
         createNetworkPartition (side1, side2)
-
-
-//        runOn (conductor) {
-//          for (r <- side1 ++ side2) {
-//            println (r.name + ": " + address(r).port.get)
-//          }
-//
-//          side2.foreach (testConductor.removeNode(_))
-//          for (role1 <- side1; role2 <- side2) {
-//            println("blackholing " + role1.name + " <-> " + role2.name)
-//            testConductor.blackhole (role1, role2, Direction.Both)
-//          }
-
-//          Thread.sleep(10000)
-//          enterBarrier("after-durable-partition")
-//        }
-
-//        runOn (side1 :_*) {
-//          enterBarrier("after-durable-partition")
-//        }
-
+        enterBarrier("after-network-split")
         Thread.sleep(15000)
 
         runOn (conductor) {
-          println ("--8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<--")
-
           for (r <- side1) upNodesFor(r) shouldBe side1.toSet
           for (r <- side2) upNodesFor(r) shouldBe empty
         }
 
         Thread.sleep(5000)
-
-//        runOn(conductor) {
-//          enterBarrier("finished")
-//        }
-//        runOn (side1 :_*) {
-//          enterBarrier("finished")
-//        }
       }
     }
   }
@@ -126,10 +91,3 @@ class StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
 class StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
-
-//class _StaticQuorumKeepOldestMultiJvmCondu extends StaticQuorumKeepOldest.Spec
-//class _StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
-//class _StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
-//class _StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
-//class _StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
-//class _StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
