@@ -1,25 +1,26 @@
 package com.ajjpj.simpleakkadowning
 
+import akka.remote.testconductor.RoleName
 import com.ajjpj.simpleakkadowning.util.{MultiNodeClusterSpec, SimpleDowningConfig}
 
 
 object StaticQuorumKeepOldest {
   object Config extends SimpleDowningConfig("static-quorum", "quorum-size" -> "3") {
 
-    val conductor = role("conductor")
-    val node1 = role("node1")
-    val node2 = role("node2")
-    val node3 = role("node3")
-    val node4 = role("node4")
-    val node5 = role("node5")
+    val conductor = role("0")
+    val node1 = role("1")
+    val node2 = role("2")
+    val node3 = role("3")
+    val node4 = role("4")
+    val node5 = role("5")
 
   }
 
-  abstract class Spec extends MultiNodeClusterSpec(Config) {
+  abstract class Spec(survivors: Int*) extends MultiNodeClusterSpec(Config) {
     import Config._
 
-    val side1 = Vector (node1, node2, node3)
-    val side2 = Vector (node4, node5)
+    val side1 = survivors.map(s => RoleName(s"$s")).toVector //  Vector (node1, node2, node3)
+    val side2 = roles.tail.filterNot (side1.contains) //Vector (node4, node5)
 
     "A cluster of five nodes" should {
       "reach initial convergence" in {
@@ -85,9 +86,9 @@ object StaticQuorumKeepOldest {
   }
 }
 
-class StaticQuorumKeepOldestMultiJvmCondu extends StaticQuorumKeepOldest.Spec
-class StaticQuorumKeepOldestMultiJvmNode1 extends StaticQuorumKeepOldest.Spec
-class StaticQuorumKeepOldestMultiJvmNode2 extends StaticQuorumKeepOldest.Spec
-class StaticQuorumKeepOldestMultiJvmNode3 extends StaticQuorumKeepOldest.Spec
-class StaticQuorumKeepOldestMultiJvmNode4 extends StaticQuorumKeepOldest.Spec
-class StaticQuorumKeepOldestMultiJvmNode5 extends StaticQuorumKeepOldest.Spec
+class StaticQuorumKeepOldestMultiJvm0 extends StaticQuorumKeepOldest.Spec(1,2,3)
+class StaticQuorumKeepOldestMultiJvm1 extends StaticQuorumKeepOldest.Spec(1,2,3)
+class StaticQuorumKeepOldestMultiJvm2 extends StaticQuorumKeepOldest.Spec(1,2,3)
+class StaticQuorumKeepOldestMultiJvm3 extends StaticQuorumKeepOldest.Spec(1,2,3)
+class StaticQuorumKeepOldestMultiJvm4 extends StaticQuorumKeepOldest.Spec(1,2,3)
+class StaticQuorumKeepOldestMultiJvm5 extends StaticQuorumKeepOldest.Spec(1,2,3)

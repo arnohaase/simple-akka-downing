@@ -56,9 +56,6 @@ private[simpleakkadowning] object SurvivalDecider {
         case None =>     upMembers(clusterState)
       }
 
-      println (s"isInMinotity: unreachable ${clusterState.unreachable.flatMap(_.address.port).mkString("[", ", ", "]")}, relevant: ${relevantMembers.flatMap(_.address.port).mkString("[", ",", "]")}")
-//      println ("isInMinority: " + clusterState.members.map(_.address.port) + "/" + clusterState.unreachable.map(_.address.port) + ": " +  relevantMembers.map(_.address.port) + " -- " + upUnreachable(clusterState).map(_.address.port) + " -> " + (relevantMembers -- upUnreachable(clusterState)).map(_.address.port))
-
       (relevantMembers -- upUnreachable(clusterState)).size < quorumSize
     }
   }

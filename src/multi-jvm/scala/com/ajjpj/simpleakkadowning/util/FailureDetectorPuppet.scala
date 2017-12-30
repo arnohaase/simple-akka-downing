@@ -19,12 +19,10 @@ class FailureDetectorPuppet(config: Config, ev: EventStream) extends FailureDete
   private val status: AtomicReference[Status] = new AtomicReference(Unknown)
 
   def markNodeAsUnavailable(): Unit = {
-    println ("*** downing")
     status.set(Down)
   }
 
   def markNodeAsAvailable(): Unit = {
-    println ("*** upping")
     status.set(Up)
   }
 

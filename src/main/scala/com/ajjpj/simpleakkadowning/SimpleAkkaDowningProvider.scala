@@ -71,8 +71,6 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
     // read cluster.state initially to keep it stable and avoid data race
     val clusterState = cluster.state
 
-    println ("onClusterChanged: " + unreachableTimer.nonEmpty + " -> " + clusterState.unreachable.size)
-
     unreachableTimer.foreach(_.cancel())
     unreachableTimer = None
 
