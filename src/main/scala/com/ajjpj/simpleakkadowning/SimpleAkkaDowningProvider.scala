@@ -1,8 +1,9 @@
 package com.ajjpj.simpleakkadowning
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Props}
-import akka.cluster.ClusterEvent.{ClusterDomainEvent, CurrentClusterState, MemberEvent, ReachabilityEvent}
-import akka.cluster.{Cluster, DowningProvider}
+import akka.cluster.ClusterEvent._
+import akka.cluster.{Cluster, DowningProvider, MemberStatus}
+import com.ajjpj.simpleakkadowning.SurvivalDecider.{ClusterMemberInfo, ClusterState}
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
@@ -35,52 +36,66 @@ class SimpleAkkaDowningProvider(system: ActorSystem) extends DowningProvider {
   }
 }
 
-
 private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, decider: SurvivalDecider) extends Actor with ActorLogging {
-  case class SplitBrainDetected(clusterState: CurrentClusterState)
+  case class SplitBrainDetected(clusterState: ClusterState)
+
+  private var state: ClusterState = _
 
   private val cluster = Cluster.get(context.system)
   cluster.subscribe(self, classOf[ClusterDomainEvent])
 
+
   private var unreachableTimer = Option.empty[Cancellable]
 
   override def receive = {
-    case e: MemberEvent       => onClusterChanged()
-    case e: ReachabilityEvent => onClusterChanged()
+    case CurrentClusterState(members, unreachable, _, _, _) =>
+      val upMembers = members.filter(_.status == MemberStatus.Up).map(m => ClusterMemberInfo(m.uniqueAddress, m.roles, m))
+      state = ClusterState(upMembers, unreachable.map(_.uniqueAddress))
+      triggerTimer()
+    case MemberUp(m) =>
+      //TODO is there a good and meaningful way to count 'weaklyUp' members?
+      state = state.copy(upMembers = state.upMembers + ClusterMemberInfo(m.uniqueAddress, m.roles, m))
+      triggerTimer()
+    case MemberLeft(m) =>
+      state = state.copy(upMembers = state.upMembers.filterNot (_.uniqueAddress == m.uniqueAddress))
+      triggerTimer()
+    case ReachableMember(m) =>
+      state = state.copy (unreachable =  state.unreachable - m.uniqueAddress)
+      triggerTimer()
+    case UnreachableMember(m) =>
+      state = state.copy (unreachable = state.unreachable + m.uniqueAddress)
+      triggerTimer()
+
+//    case e: MemberEvent       => onClusterChanged()
+//    case e: ReachabilityEvent => onClusterChanged()
 
     //TODO extract side effects for testability
     case SplitBrainDetected(clusterState) if decider.isInMinority(clusterState, cluster.selfAddress) =>
       log.error("Network partition detected. I am not in the surviving partition --> terminating")
       context.system.terminate()
       context.become(Actor.emptyBehavior)
-    case SplitBrainDetected(clusterState) if iAmOldest(clusterState) =>
-      log.error("Network partition detected. I am the oldest node in the surviving partition --> terminating unreachable nodes {}", cluster.state.unreachable)
+    case SplitBrainDetected(clusterState) if iAmResponsibleAction(clusterState) =>
+      log.error("Network partition detected. I am the responsible node in the surviving partition --> terminating unreachable nodes {}", cluster.state.unreachable)
       cluster.state.unreachable.foreach(m => cluster.down(m.address))
     case SplitBrainDetected(clusterState) =>
-      log.info("Network partition detected. I am in the surviving partition, but I am not the leader, so nothing needs to be done")
+      log.info("Network partition detected. I am in the surviving partition, but I am not the responsible node, so nothing needs to be done")
   }
 
-  private def oldestReachable(clusterState: CurrentClusterState) = {
-    val allReachable = clusterState.members -- clusterState.unreachable
-    allReachable.foldLeft(allReachable.iterator.next())((a, b) => if (a.isOlderThan(b)) a else b)
-  }
-
-  private def iAmOldest(clusterState: CurrentClusterState) = oldestReachable(clusterState).address == cluster.selfAddress
-
-  private def onClusterChanged(): Unit = {
-    // read cluster.state initially to keep it stable and avoid data race
-    val clusterState = cluster.state
-
+  private def triggerTimer(): Unit = {
     unreachableTimer.foreach(_.cancel())
     unreachableTimer = None
 
-    if (clusterState.unreachable.nonEmpty) {
+    if (state.unreachable.nonEmpty) {
       import context.dispatcher
       // Store the cluster's state in the message to ensure split brain detection is done based on the state that was stable.
       //  If the handler reads the then-current cluster state, that may have changed between the scheduler firing and the event
       //  being handled
-      unreachableTimer = Some(context.system.scheduler.scheduleOnce(stableInterval, self, SplitBrainDetected(clusterState)))
+      unreachableTimer = Some(context.system.scheduler.scheduleOnce(stableInterval, self, SplitBrainDetected(state)))
     }
+  }
+
+  private def iAmResponsibleAction(clusterState: ClusterState) = {
+    clusterState.sortedUpAndReachable.head.uniqueAddress.address == cluster.selfAddress
   }
 
   override def postStop () = {

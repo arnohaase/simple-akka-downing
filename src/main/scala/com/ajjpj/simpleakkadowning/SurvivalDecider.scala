@@ -1,23 +1,32 @@
 package com.ajjpj.simpleakkadowning
 
 import akka.actor.Address
-import akka.cluster.ClusterEvent.CurrentClusterState
-import akka.cluster.MemberStatus
+import akka.cluster.{Member, UniqueAddress}
+import com.ajjpj.simpleakkadowning.SurvivalDecider.ClusterState
 import com.typesafe.config.Config
+
+import scala.collection.immutable.SortedSet
 
 
 trait SurvivalDecider {
-  def isInMinority(clusterState: CurrentClusterState, selfAddress: Address): Boolean
-
-  //TODO is there a good and meaningful way to count 'weaklyUp' members?
-  /**
-    * This convenience method extracts all members that should count as cluster members.
-    */
-  protected def upMembers(clusterState: CurrentClusterState) = clusterState.members.filter(_.status == MemberStatus.Up)
-  protected def upUnreachable(clusterState: CurrentClusterState) = clusterState.unreachable.filter(_.status == MemberStatus.Up)
+  def isInMinority(clusterState: ClusterState, selfAddress: Address): Boolean
 }
 
-private[simpleakkadowning] object SurvivalDecider {
+object SurvivalDecider {
+  private val memberOrdering = new Ordering[ClusterMemberInfo] {
+    override def compare (x: ClusterMemberInfo, y: ClusterMemberInfo) =
+      Member.addressOrdering.compare(x.uniqueAddress.address, y.uniqueAddress.address)
+  }
+
+  case class ClusterMemberInfo(uniqueAddress: UniqueAddress, roles: Set[String], member: Member)
+  case class ClusterState(upMembers: Set[ClusterMemberInfo], unreachable: Set[UniqueAddress]) {
+    lazy val sortedUpMembers = SortedSet.empty(memberOrdering) ++  upMembers
+    lazy val sortedUpAndReachable = sortedUpMembers.filterNot (x => unreachable.contains(x.uniqueAddress))
+    lazy val upReachable = upMembers.filterNot(x => unreachable(x.uniqueAddress))
+    lazy val upUnreachable = upMembers.filter(x => unreachable(x.uniqueAddress))
+  }
+
+
   def apply(config: Config): SurvivalDecider = {
     val cc = config.getConfig("simple-akka-downing")
 
@@ -50,38 +59,38 @@ private[simpleakkadowning] object SurvivalDecider {
 
 
   class FixedQuorumDecider(quorumSize: Int, role: Option[String]) extends SurvivalDecider {
-    override def isInMinority(clusterState: CurrentClusterState, selfAddress: Address) = {
+    override def isInMinority(clusterState: ClusterState, selfAddress: Address) = {
       val relevantMembers = role match {
-        case Some (r) => upMembers(clusterState).filter (_.roles contains r)
-        case None =>     upMembers(clusterState)
+        case Some (r) => clusterState.upMembers.filter (_.roles contains r)
+        case None =>     clusterState.upMembers
       }
 
-      (relevantMembers -- upUnreachable(clusterState)).size < quorumSize
+      (relevantMembers -- clusterState.upUnreachable).size < quorumSize
     }
   }
 
   class KeepMajorityDecider(role: Option[String]) extends SurvivalDecider {
-    override def isInMinority (clusterState: CurrentClusterState, selfAddress: Address) = {
+    override def isInMinority (clusterState: ClusterState, selfAddress: Address) = {
       role match {
         case Some(r) =>
-          val all = upMembers(clusterState).filter(_.roles contains r)
-          val unreachable = upUnreachable(clusterState).filter(_.roles contains r)
+          val all = clusterState.upMembers.filter(_.roles contains r)
+          val unreachable = clusterState.upUnreachable.filter(_.roles contains r)
           all.size > 2*unreachable.size
         case None =>
-          upMembers(clusterState).size > 2*upUnreachable(clusterState).size
+          clusterState.upMembers.size > 2*clusterState.upUnreachable.size
       }
     }
   }
 
   class KeepOldestDecider(downIfAlone: Boolean, role: Option[String]) extends SurvivalDecider {
-    override def isInMinority (clusterState: CurrentClusterState, selfAddress: Address) = {
+    override def isInMinority (clusterState: ClusterState, selfAddress: Address) = {
       val allRelevant = role match {
-        case Some(r) => upMembers(clusterState).filter(_.roles contains r)
-        case None    => upMembers(clusterState)
+        case Some(r) => clusterState.upMembers.filter(_.roles contains r)
+        case None    => clusterState.upMembers
       }
-      val oldestRelevant = allRelevant.foldLeft(allRelevant.iterator.next())((a, b) => if (a.isOlderThan(b)) a else b)
 
-      (clusterState.unreachable contains oldestRelevant) || (downIfAlone && upMembers(clusterState).size == upUnreachable(clusterState).size + 1)
+      val oldestRelevant = allRelevant.foldLeft(allRelevant.head)((a, b) => if (a.member isOlderThan b.member) a else b)
+      (clusterState.unreachable contains oldestRelevant.uniqueAddress) || (downIfAlone && clusterState.upReachable.size == 1)
     }
   }
 }

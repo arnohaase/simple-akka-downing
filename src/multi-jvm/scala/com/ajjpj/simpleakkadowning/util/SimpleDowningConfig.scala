@@ -64,7 +64,7 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
            |
            |akka.cluster.downing-provider-class = com.ajjpj.simpleakkadowning.SimpleAkkaDowningProvider
            |
-           |simple-akka-downing.stable-after=10s
+           |simple-akka-downing.stable-after=5s
            |simple-akka-downing.active-strategy=$strategy
            |""".stripMargin +
           strategyConfig.map(c => s"simple-akka-downing.$strategy.${c._1}=${c._2}").mkString("\n")

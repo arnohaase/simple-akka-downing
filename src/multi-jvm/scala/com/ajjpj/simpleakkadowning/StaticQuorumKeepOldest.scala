@@ -17,7 +17,7 @@ object StaticQuorumKeepOldest {
   }
 
   abstract class Spec(survivors: Int*) extends MultiNodeClusterSpec(Config) {
-    import Config._
+    val conductor = RoleName("0")
 
     val side1 = survivors.map(s => RoleName(s"$s")).toVector //  Vector (node1, node2, node3)
     val side2 = roles.tail.filterNot (side1.contains) //Vector (node4, node5)
@@ -34,29 +34,13 @@ object StaticQuorumKeepOldest {
 
       "mark nodes as unreachable between partitions, and heal the partition" in {
         enterBarrier ("before-split")
-
+        // mark nodes across the partition as mutually unreachable, and wait until that is reflected in all nodes' local cluster state
         createNetworkPartition(side1, side2)
         enterBarrier ("after-split")
 
-        Thread.sleep (6000)
-
-        runOn (conductor) {
-          for (r <- side1) {
-            upNodesFor (r) shouldBe (side1 ++ side2).toSet
-            unreachableNodesFor (r) shouldBe side2.toSet
-          }
-          for (r <- side2) {
-            upNodesFor (r) shouldBe (side1 ++ side2).toSet
-            unreachableNodesFor (r) shouldBe side1.toSet
-          }
-        }
-
-        enterBarrier("after-split-check")
-
+        // mark nodes across the partition as mutually unreachable, and wait until that is reflected in all nodes' local cluster state
         healNetworkPartition()
         enterBarrier ("after-network-heal")
-
-        Thread.sleep (10000)
 
         runOn (conductor) {
           for (r <- side1 ++ side2) {
@@ -71,16 +55,20 @@ object StaticQuorumKeepOldest {
       "detect a network partition and shut down one partition after a timeout" in {
         enterBarrier("before-durable-partition")
 
+        // mark nodes across the partition as mutually unreachable, and wait until that is reflected in all nodes' local cluster state
         createNetworkPartition (side1, side2)
         enterBarrier("after-network-split")
-        Thread.sleep(15000)
+
+        // five second timeout until our downing strategy kicks in - plus some additional delay to be on the safe side
+        Thread.sleep(7000)
 
         runOn (conductor) {
           for (r <- side1) upNodesFor(r) shouldBe side1.toSet
           for (r <- side2) upNodesFor(r) shouldBe empty
         }
 
-        Thread.sleep(5000)
+        // some additional time to ensure cluster node JVMs stay alive during the previous checks
+        Thread.sleep(2000)
       }
     }
   }
@@ -92,3 +80,10 @@ class StaticQuorumKeepOldestMultiJvm2 extends StaticQuorumKeepOldest.Spec(1,2,3)
 class StaticQuorumKeepOldestMultiJvm3 extends StaticQuorumKeepOldest.Spec(1,2,3)
 class StaticQuorumKeepOldestMultiJvm4 extends StaticQuorumKeepOldest.Spec(1,2,3)
 class StaticQuorumKeepOldestMultiJvm5 extends StaticQuorumKeepOldest.Spec(1,2,3)
+
+class StaticQuorumLoseOldestMultiJvm0 extends StaticQuorumKeepOldest.Spec(3,4,5)
+class StaticQuorumLoseOldestMultiJvm1 extends StaticQuorumKeepOldest.Spec(3,4,5)
+class StaticQuorumLoseOldestMultiJvm2 extends StaticQuorumKeepOldest.Spec(3,4,5)
+class StaticQuorumLoseOldestMultiJvm3 extends StaticQuorumKeepOldest.Spec(3,4,5)
+class StaticQuorumLoseOldestMultiJvm4 extends StaticQuorumKeepOldest.Spec(3,4,5)
+class StaticQuorumLoseOldestMultiJvm5 extends StaticQuorumKeepOldest.Spec(3,4,5)

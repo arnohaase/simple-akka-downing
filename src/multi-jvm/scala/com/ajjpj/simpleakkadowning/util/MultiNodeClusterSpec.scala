@@ -1,7 +1,5 @@
 package com.ajjpj.simpleakkadowning.util
 
-import java.util.concurrent.ConcurrentHashMap
-
 import akka.actor.{ActorSystem, Address, Props}
 import akka.cluster.Member.addressOrdering
 import akka.cluster._
@@ -23,16 +21,11 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
 
   def cluster: Cluster = Cluster(system)
 
-  private val cachedAddresses = new ConcurrentHashMap[RoleName, Address]
-  implicit def address(role: RoleName): Address = {
-    cachedAddresses.get(role) match {
-      case null ⇒
-        val address = node(role).address
-        cachedAddresses.put(role, address)
-        address
-      case address ⇒ address
-    }
+   val cachedAddresses = {
+//    new Error("------------------------------------------------------").printStackTrace()
+    roles.map(r => r -> node(r).address).toMap
   }
+  implicit def address(role: RoleName): Address = cachedAddresses(role)
 
   implicit val clusterOrdering: Ordering[RoleName] = new Ordering[RoleName] {
     import Member.addressOrdering
@@ -109,15 +102,18 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
   def createNetworkPartition(side1: Seq[RoleName], side2: Seq[RoleName]): Unit = {
     runOn(side1 :_*) {
       for (r <- side2) markNodeAsUnavailable(r)
+      awaitAssert(cluster.state.unreachable.size == side2.size)
     }
     runOn(side2 :_*) {
       for (r <- side1) markNodeAsUnavailable(r)
+      awaitAssert(cluster.state.unreachable.size == side1.size)
     }
   }
 
   def healNetworkPartition(): Unit = {
     runOn(roles.tail :_*) {
       for (r <- roles.tail) markNodeAsAvailable(r)
+      awaitAssert(cluster.state.unreachable.isEmpty)
     }
   }
 
