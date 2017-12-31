@@ -3,7 +3,6 @@ package com.ajjpj.simpleakkadowning.util
 import java.util.UUID
 
 import akka.remote.testkit.MultiNodeConfig
-import com.ajjpj.simpleakkadowning.StaticQuorumKeepOldest.Config.role
 import com.typesafe.config.ConfigFactory
 
 
@@ -74,6 +73,13 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
 
     roleName
   }
+
+  val conductor = role("0")
+  val node1 = role("1")
+  val node2 = role("2")
+  val node3 = role("3")
+  val node4 = role("4")
+  val node5 = role("5")
 
   //  commonConfig(debugConfig(true))
   testTransport(true)
