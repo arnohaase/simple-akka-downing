@@ -49,11 +49,7 @@ object SurvivalDecider {
       case "keep-oldest" =>
         val ccc = cc.getConfig("keep-oldest")
         val downIfAlone = ccc.getBoolean("down-if-alone")
-        val role = ccc.getString("role") match {
-          case r if r.trim.isEmpty => None
-          case r => Some(r)
-        }
-        new KeepOldestDecider(downIfAlone, role)
+        new KeepOldestDecider(downIfAlone)
     }
   }
 
@@ -85,13 +81,9 @@ object SurvivalDecider {
     }
   }
 
-  class KeepOldestDecider(downIfAlone: Boolean, role: Option[String]) extends SurvivalDecider {
+  class KeepOldestDecider(downIfAlone: Boolean) extends SurvivalDecider {
     override def isInMinority (clusterState: ClusterState, selfAddress: Address) = {
-      val allRelevant = role match {
-        case Some(r) => clusterState.upMembers.filter(_.roles contains r)
-        case None    => clusterState.upMembers
-      }
-
+      val allRelevant = clusterState.upMembers
       val oldestRelevant = allRelevant.foldLeft(allRelevant.head)((a, b) => if (a.member isOlderThan b.member) a else b)
       (clusterState.unreachable contains oldestRelevant.uniqueAddress) || (downIfAlone && clusterState.upReachable.size == 1)
     }
