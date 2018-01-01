@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.{HttpRequest, Uri}
 import akka.remote.DefaultFailureDetectorRegistry
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeSpec
+import akka.remote.transport.ThrottlerTransportAdapter.Direction
 import akka.stream.ActorMaterializer
 import akka.testkit.TestEvent.Mute
 import akka.testkit.{EventFilter, ImplicitSender}
@@ -16,15 +17,19 @@ import scala.collection.immutable
 import scala.concurrent.duration._
 
 
+/**
+  * Based on test code of Akka cluster itself
+  */
 abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNodeSpec(config) with STMultiNodeSpec with ImplicitSender {
   def initialParticipants = roles.size
 
   def cluster: Cluster = Cluster(system)
 
-   val cachedAddresses = {
-//    new Error("------------------------------------------------------").printStackTrace()
+  val cachedAddresses = {
     roles.map(r => r -> node(r).address).toMap
   }
+  println ("======================================================= " + cachedAddresses)
+
   implicit def address(role: RoleName): Address = cachedAddresses(role)
 
   implicit val clusterOrdering: Ordering[RoleName] = new Ordering[RoleName] {

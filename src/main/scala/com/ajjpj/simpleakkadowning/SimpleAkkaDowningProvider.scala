@@ -63,9 +63,11 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
       triggerTimer()
     case ReachableMember(m) =>
       state = state.copy (unreachable =  state.unreachable - m.uniqueAddress)
+      println("######################################## reachable: " + m + " -> " + state)
       triggerTimer()
     case UnreachableMember(m) =>
       state = state.copy (unreachable = state.unreachable + m.uniqueAddress)
+      println("######################################## unreachable: " + m + " -> " + state)
       triggerTimer()
 
     case SplitBrainDetected(clusterState) if decider.isInMinority(clusterState, cluster.selfAddress) =>

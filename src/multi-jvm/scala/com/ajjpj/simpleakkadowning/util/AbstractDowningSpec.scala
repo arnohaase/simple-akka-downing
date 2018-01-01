@@ -3,8 +3,6 @@ package com.ajjpj.simpleakkadowning.util
 import akka.remote.testconductor.RoleName
 
 abstract class AbstractDowningSpec(config: SimpleDowningConfig, survivors: Int*) extends MultiNodeClusterSpec(config) {
-  val conductor = RoleName("0")
-
   val side1 = survivors.map(s => RoleName(s"$s")).toVector //  Vector (node1, node2, node3)
   val side2 = roles.tail.filterNot (side1.contains) //Vector (node4, node5)
 
@@ -28,7 +26,7 @@ abstract class AbstractDowningSpec(config: SimpleDowningConfig, survivors: Int*)
       healNetworkPartition()
       enterBarrier ("after-network-heal")
 
-      runOn (conductor) {
+      runOn (config.conductor) {
         for (r <- side1 ++ side2) {
           upNodesFor (r) shouldBe (side1 ++ side2).toSet
           unreachableNodesFor (r) shouldBe empty
@@ -43,12 +41,12 @@ abstract class AbstractDowningSpec(config: SimpleDowningConfig, survivors: Int*)
 
       // mark nodes across the partition as mutually unreachable, and wait until that is reflected in all nodes' local cluster state
       createNetworkPartition (side1, side2)
-      enterBarrier("after-network-split")
+      enterBarrier("durable-partition")
 
       // five second timeout until our downing strategy kicks in - plus some additional delay to be on the safe side
       Thread.sleep(7000)
 
-      runOn (conductor) {
+      runOn (config.conductor) {
         for (r <- side1) upNodesFor(r) shouldBe side1.toSet
         for (r <- side2) upNodesFor(r) shouldBe empty
       }
