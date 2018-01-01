@@ -12,12 +12,11 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
   final val CLUSTER_SIZE = 5
   final val ROLE_SIZE = 3
 
-  private var numRoles = 0
+  private var numRoles = 0 // 'roles' in the sense of multi-jvm testing, not in the sense of Akka cluster roles
   override def role (name: String) = {
     val roleName = super.role (name)
-    numRoles += 1
 
-    if (numRoles > 1) {
+    if (numRoles > 0) {
       var clusterRoles = Vector.empty[String]
 
       if (numRoles <= ROLE_SIZE) clusterRoles :+= "with-oldest"
@@ -70,6 +69,8 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
 
       nodeConfig (roleName)(ConfigFactory.parseString (configString))
     }
+
+    numRoles += 1
 
     roleName
   }

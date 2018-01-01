@@ -48,6 +48,8 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
   private var unreachableTimer = Option.empty[Cancellable]
 
   override def receive = {
+    // cluster.state may or may not reflect the changes during event handling, so we need to keep track of cluster state ourselves
+
     case CurrentClusterState(members, unreachable, _, _, _) =>
       val upMembers = members.filter(_.status == MemberStatus.Up).map(m => ClusterMemberInfo(m.uniqueAddress, m.roles, m))
       state = ClusterState(upMembers, unreachable.map(_.uniqueAddress))
@@ -66,10 +68,6 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
       state = state.copy (unreachable = state.unreachable + m.uniqueAddress)
       triggerTimer()
 
-//    case e: MemberEvent       => onClusterChanged()
-//    case e: ReachabilityEvent => onClusterChanged()
-
-    //TODO extract side effects for testability
     case SplitBrainDetected(clusterState) if decider.isInMinority(clusterState, cluster.selfAddress) =>
       log.error("Network partition detected. I am not in the surviving partition --> terminating")
       context.system.terminate()
