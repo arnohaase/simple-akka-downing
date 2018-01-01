@@ -28,7 +28,6 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
   val cachedAddresses = {
     roles.map(r => r -> node(r).address).toMap
   }
-  println ("======================================================= " + cachedAddresses)
 
   implicit def address(role: RoleName): Address = cachedAddresses(role)
 

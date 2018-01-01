@@ -71,9 +71,6 @@ object SurvivalDecider {
         case Some(r) =>
           val all = clusterState.upMembers.filter(_.roles contains r)
           val unreachable = clusterState.upUnreachable.filter(_.roles contains r)
-
-          println ("******************************************************** " + all + " / " + unreachable)
-
           all.size <= 2*unreachable.size
         case None =>
           clusterState.upMembers.size > 2*clusterState.upUnreachable.size
