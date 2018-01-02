@@ -14,7 +14,7 @@ crossScalaVersions := Seq("2.11.8", "2.12.4")
 scalaVersion := "2.12.4"
 organization := "com.ajjpj.simple-akka-downing"
 
-version      := "0.9.1"
+version      := "0.9.2"
 
 
 lazy val `simple-akka-downing` = (project in file("."))

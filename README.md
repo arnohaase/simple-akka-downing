@@ -200,7 +200,7 @@ The library is on Maven central. Its Maven coordinates are
 <dependency>
     <groupId>com.ajjpj.simple-akka-downing</groupId>
     <artifactId>simple-akka-downing_2.11</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.1</version>
 </dependency>
 ```
 
@@ -210,7 +210,7 @@ The library is on Maven central. Its Maven coordinates are
 <dependency>
     <groupId>com.ajjpj.simple-akka-downing</groupId>
     <artifactId>simple-akka-downing_2.12</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.1</version>
 </dependency>
 ```
 
@@ -219,7 +219,7 @@ for Scala 2.12.
 With sbt, use 
 
 ```
-"com.ajjpj.simpe-akka-downing" %% "simple-akka-downing" % "0.9.0" 
+"com.ajjpj.simpe-akka-downing" %% "simple-akka-downing" % "0.9.1" 
 ```
 
 
