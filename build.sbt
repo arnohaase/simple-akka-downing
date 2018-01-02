@@ -10,15 +10,17 @@ scalacOptions ++= Seq(
   "-language:higherKinds"
 )
 
+crossScalaVersions := Seq("2.11.8", "2.12.4")
+scalaVersion := "2.12.4"
+organization := "com.ajjpj.simple-akka-downing"
+
+version      := "0.9.0"
+
+
 lazy val `simple-akka-downing` = (project in file("."))
   .enablePlugins(MultiJvmPlugin)
   .configs(MultiJvm)
   .settings(
-    inThisBuild(List(
-      organization := "com.ajjpj.simple-akka-downing",
-      scalaVersion := "2.12.4",
-      version      := "0.1.0-SNAPSHOT"
-    )),
     name := "simple-akka-downing",
 
     libraryDependencies += akkaCluster,
@@ -28,3 +30,10 @@ lazy val `simple-akka-downing` = (project in file("."))
     libraryDependencies += testKit % Test,
     libraryDependencies += multiNodeTestKit % Test,
   )
+
+publishTo := Some(
+  if (isSnapshot.value)
+    Opts.resolver.sonatypeSnapshots
+  else
+    Opts.resolver.sonatypeStaging
+)
