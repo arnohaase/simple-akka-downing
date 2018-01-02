@@ -5,6 +5,7 @@ import akka.cluster.{Member, UniqueAddress}
 import com.ajjpj.simpleakkadowning.SurvivalDecider.ClusterState
 import com.typesafe.config.Config
 
+import scala.collection.Set
 import scala.collection.immutable.SortedSet
 
 
@@ -82,7 +83,17 @@ object SurvivalDecider {
     override def isInMinority (clusterState: ClusterState, selfAddress: Address) = {
       val allRelevant = clusterState.upMembers
       val oldestRelevant = allRelevant.foldLeft(allRelevant.head)((a, b) => if (a.member isOlderThan b.member) a else b)
-      (clusterState.unreachable contains oldestRelevant.uniqueAddress) || (downIfAlone && clusterState.upReachable.size == 1)
+
+      if (downIfAlone) {
+        clusterState.upReachable match {
+          case s if s == Set(oldestRelevant) => true                                       // only the oldest node --> terminate
+          case _ if clusterState.unreachable == Set(oldestRelevant.uniqueAddress) => false // the oldest node is the only unreachable node --> survive
+          case _ => clusterState.unreachable contains oldestRelevant.uniqueAddress
+        }
+      }
+      else {
+        clusterState.unreachable contains oldestRelevant.uniqueAddress
+      }
     }
   }
 }
