@@ -172,7 +172,7 @@ The `keep-oldest` strategy requires the oldest node in the cluster to be reachab
 survive. This is more exotic than the previous strategies, but it can be advantageous because cluster singletons
 run on the oldest node, so this strategy minimizes cluster singleton restart.
 
-It can however result in 29 nodes being downed in a cluster of 31 nodes, with only two nodes surviving. That may
+It can however result in e.g. 29 nodes being downed in a cluster of 31 nodes, with only two nodes surviving. That may
 not be a bad thing - it is after all what this strategy exists for - but you should know what you are in for.
 
 There is special treatment for the situation that the oldest node is the only one to become unreachable: If the
