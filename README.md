@@ -219,7 +219,7 @@ for Scala 2.12.
 With sbt, use 
 
 ```
-"com.ajjpj.simpe-akka-downing" %% "simple-akka-downing" % "0.9.1" 
+"com.ajjpj.simple-akka-downing" %% "simple-akka-downing" % "0.9.1" 
 ```
 
 
