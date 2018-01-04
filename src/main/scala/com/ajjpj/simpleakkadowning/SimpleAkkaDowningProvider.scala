@@ -65,17 +65,22 @@ private[simpleakkadowning] class DowningActor(stableInterval: FiniteDuration, de
       state = state.copy (unreachable =  state.unreachable - m.uniqueAddress)
       triggerTimer()
     case UnreachableMember(m) =>
+      println ("******* UNREACHABLE: " + m.uniqueAddress.address.port)
+
       state = state.copy (unreachable = state.unreachable + m.uniqueAddress)
       triggerTimer()
 
     case SplitBrainDetected(clusterState) if decider.isInMinority(clusterState, cluster.selfAddress) =>
+      println ("########################### " + clusterState.upMembers + " |||||||||||||||||||| " + clusterState.unreachable + " >>>>>>>>>>>>>>>>>>> " + clusterState.upUnreachable)
       log.error("Network partition detected. I am not in the surviving partition --> terminating")
       context.system.terminate()
       context.become(Actor.emptyBehavior)
     case SplitBrainDetected(clusterState) if iAmResponsibleAction(clusterState) =>
+      println ("########################### " + clusterState.upMembers + " |||||||||||||||||||| " + clusterState.unreachable + " >>>>>>>>>>>>>>>>>>> " + clusterState.upUnreachable)
       log.error("Network partition detected. I am the responsible node in the surviving partition --> terminating unreachable nodes {}", cluster.state.unreachable)
       cluster.state.unreachable.foreach(m => cluster.down(m.address))
     case SplitBrainDetected(clusterState) =>
+      println ("########################### " + clusterState.upMembers + " |||||||||||||||||||| " + clusterState.unreachable + " >>>>>>>>>>>>>>>>>>> " + clusterState.upUnreachable)
       log.info("Network partition detected. I am in the surviving partition, but I am not the responsible node, so nothing needs to be done")
   }
 

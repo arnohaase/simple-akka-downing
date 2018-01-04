@@ -74,7 +74,7 @@ object SurvivalDecider {
           val unreachable = clusterState.upUnreachable.filter(_.roles contains r)
           all.size <= 2*unreachable.size
         case None =>
-          clusterState.upMembers.size > 2*clusterState.upUnreachable.size
+          clusterState.upMembers.size <= 2*clusterState.upUnreachable.size
       }
     }
   }
