@@ -14,6 +14,7 @@ import akka.testkit.TestEvent.Mute
 import akka.testkit.{EventFilter, ImplicitSender}
 
 import scala.collection.immutable
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 
@@ -71,6 +72,8 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
       awaitMembersUp(numberOfMembers = roles.length)
     }
     enterBarrier(roles.map(_.name).mkString("-") + "-joined")
+    Thread.sleep(5000)
+    enterBarrier("after-" + roles.map(_.name).mkString("-") + "-joined")
   }
 
   def httpPort (node: RoleName) = {
@@ -104,21 +107,44 @@ abstract class MultiNodeClusterSpec(config: SimpleDowningConfig) extends MultiNo
   }
 
   def createNetworkPartition(side1: Seq[RoleName], side2: Seq[RoleName]): Unit = {
+    Thread.sleep(5.seconds.toMillis)
+
+    runOn(roles.head) {
+      for (r1 <- side1; r2 <- side2) testConductor.blackhole(r1, r2, Direction.Both).await
+    }
+
     runOn(side1 :_*) {
-      for (r <- side2) markNodeAsUnavailable(r)
-      awaitAssert(cluster.state.unreachable.size == side2.size)
+      within(30.seconds) {
+        awaitAssert { cluster.state.unreachable.size shouldBe side2.size }
+      }
     }
     runOn(side2 :_*) {
-      for (r <- side1) markNodeAsUnavailable(r)
-      awaitAssert(cluster.state.unreachable.size == side1.size)
+      within (30.seconds) {
+        awaitAssert { cluster.state.unreachable.size shouldBe side1.size }
+      }
     }
+
+
+
+//    runOn(side1 :_*) {
+//      for (r <- side2) markNodeAsUnavailable(r)
+//      awaitAssert(cluster.state.unreachable.size == side2.size)
+//    }
+//    runOn(side2 :_*) {
+//      for (r <- side1) markNodeAsUnavailable(r)
+//      awaitAssert(cluster.state.unreachable.size == side1.size)
+//    }
   }
 
   def healNetworkPartition(): Unit = {
-    runOn(roles.tail :_*) {
-      for (r <- roles.tail) markNodeAsAvailable(r)
-      awaitAssert(cluster.state.unreachable.isEmpty)
+    runOn(roles.head) {
+      for (r1 <- roles; r2 <- roles) testConductor.passThrough(r1, r2, Direction.Both).await
     }
+
+//    runOn(roles.tail :_*) {
+//      for (r <- roles.tail) markNodeAsAvailable(r)
+//      awaitAssert(cluster.state.unreachable.isEmpty)
+//    }
   }
 
   /**

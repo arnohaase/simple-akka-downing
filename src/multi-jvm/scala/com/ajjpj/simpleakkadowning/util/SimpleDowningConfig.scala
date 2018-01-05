@@ -33,7 +33,6 @@ abstract class SimpleDowningConfig(strategy: String, strategyConfig: (String,Str
            |  periodic-tasks-initial-delay        = 100 ms
            |  publish-stats-interval              = 0 s # always, when it happens
            |  failure-detector.heartbeat-interval = 100 ms
-           |  failure-detector.implementation-class = com.ajjpj.simpleakkadowning.util.FailureDetectorPuppet
            |
            |  roles = ${clusterRoles.mkString("[", ",", "]")}
            |

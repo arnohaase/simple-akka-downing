@@ -21,6 +21,7 @@ lazy val `simple-akka-downing` = (project in file("."))
   .enablePlugins(MultiJvmPlugin)
   .configs(MultiJvm)
   .settings(
+    parallelExecution in Test := false,
     name := "simple-akka-downing",
 
     libraryDependencies += akkaCluster,
