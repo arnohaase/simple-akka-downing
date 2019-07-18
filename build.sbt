@@ -11,11 +11,10 @@ scalacOptions ++= Seq(
 )
 
 crossScalaVersions := Seq("2.11.8", "2.12.4")
-scalaVersion := "2.12.4"
+scalaVersion := "2.13.0"
 organization := "com.ajjpj.simple-akka-downing"
 
 version      := "0.9.3"
-
 
 lazy val `simple-akka-downing` = (project in file("."))
   .enablePlugins(MultiJvmPlugin)
