@@ -60,12 +60,12 @@ simple-akka-downing {
   # Disable with "off" or specify a duration to enable.
   #
   # See akka.cluster.down-removal-margin
-  down-removal-margin = 5s
+  down-removal-margin = 10s
 
   # Time margin after which unreachable nodes in a stable cluster state (i.e. no nodes changed
   #  their membership state or their reachability) are treated as permanently unreachable, and
   #  the split-brain resolution strategy kicks in.
-  stable-after = 20s
+  stable-after = 10s
 
   # The active strategy is one of static-quorum, keep-majority and keep-oldest. It is triggered
   #  after the cluster configuration has been stable for an interval of 'stable-after'.
